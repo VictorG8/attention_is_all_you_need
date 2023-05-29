@@ -2,20 +2,28 @@ import torch
 import torch.nn as nn
 
 class Generator(nn.Module):
-    """ Linear projection layer for generating output distribution.
+    """
+    Linear projection layer for generating output distribution.
+
+    Args:
+        hid_dim (int): The dimensionality of the input hidden states.
+        vocab_size (int): The size of the vocabulary (number of possible output tokens).
+
+    Inputs:
+        - x (torch.Tensor): The input tensor of shape (batch_size, tgt_len, hid_dim).
+
+    Returns:
+        - output (torch.Tensor): The output tensor of shape (batch_size, tgt_len).
     """
 
-    def __init__(self, hid_dim, vocab_size):
+    def __init__(self, hid_dim:int, vocab_size:int):
         super(Generator, self).__init__()
         self.proj = nn.Linear(hid_dim, vocab_size)
     
 
-    def forward(self, x):
-        """ x: (batch_size, target_seq_len, d_model)
-        """
-        # apply linear projection followed by softmax to obtain output distribution
-        x = self.proj(x)  # (batch_size, target_seq_len, vocab_size)
-        output = torch.log_softmax(x, dim=-1)  # (batch_size, target_seq_len)
+    def forward(self, x:torch.Tensor):
 
-        # output: (batch_size, target_seq_len)
+        x = self.proj(x)  # Shape: (batch_size, tgt_len, vocab_size)
+        output = torch.log_softmax(x, dim=-1)  # Shape: (batch_size, tgt_len)
+
         return output

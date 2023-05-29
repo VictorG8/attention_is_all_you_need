@@ -5,7 +5,33 @@ from model.PositionalEncoding import PositionalEncoding
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_dim, hid_dim, n_layers, n_heads, pwff_dim, pad_idx, dropout, max_len = 5000):
+    """
+    Encoder module in a Transformer model.
+
+    This module represents the encoder component of a Transformer model. It consists of a stack
+    of multiple encoder layers.
+
+    Args:
+        input_dim (int): The size of the source vocabulary.
+        hid_dim (int): The input and output dimensionality of the model.
+        n_layers (int): The number of encoder layers.
+        n_heads (int): The number of attention heads.
+        pwff_fim (int): The hidden dimensionality of the feed-forward network.
+        pad_idx (int):  the entries at padding_idx do not contribute to the gradient; therefore,
+        the embedding vector at padding_idx is not updated during training, i.e. it remains as a fixed “pad”
+        dropout (float, optional): The dropout probability to apply within the module. Default: 0.1.
+        max_len (int, optional): The maximum length of the input sequences. Default: 500
+
+    Inputs:
+        - src (torch.Tensor): The input source sequence of shape (batch_size, src_len).
+        - src_mask (torch.Tensor): The input source sequence mask of shape (batch_size, 1, src_len).
+
+    Returns:
+        - src (torch.Tensor): The output encoded representation of shape (batch_size, src_len, hid_dim).
+    """
+
+    def __init__(self, input_dim:int, hid_dim:int, n_layers:int, n_heads:int,
+                 pwff_dim:int, pad_idx:int, dropout:float=0.1, max_len:int=500):
         super().__init__()
         
         self.tok_embedding = nn.Embedding(input_dim, hid_dim, padding_idx=pad_idx)
@@ -17,19 +43,12 @@ class Encoder(nn.Module):
         
         self.scale = torch.sqrt(torch.FloatTensor([hid_dim]))
         
-    def forward(self, x, x_mask):
+    def forward(self, src:torch.Tensor, src_mask:torch.Tensor):
         
-        #x = [batch size, x len]
-        #x_mask = [batch size, 1, 1, x len]
-        
-        x = self.tok_embedding(x) * self.scale # (batch_size, source_seq_len, d_model)
-        x = self.pos_embedding(x)  # (batch_size, source_seq_len, d_model)
-        
-        #x = [batch size, x len, hid dim]
-        
+        src = self.tok_embedding(src) * self.scale  # Shape: (batch_size, src_len, hid_dim)
+        src = self.pos_embedding(src)  # Shape: (batch_size, src_len, hid_dim)
+          
         for layer in self.layers:
-            x = layer(x, x_mask)
+            src = layer(src, src_mask)  # Shape: (batch size, src len, hid dim)
             
-        #x = [batch size, x len, hid dim]
-            
-        return x
+        return src

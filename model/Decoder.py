@@ -5,7 +5,32 @@ from model.PositionalEncoding import PositionalEncoding
 
 
 class Decoder(nn.Module):
-    def __init__(self, output_dim, hid_dim, n_layers, n_heads, pwff_dim, pad_idx, dropout, max_len = 5000):
+    """
+    Transformer decoder module that consists of multiple decoder layers.
+
+    Args:
+        output_dim (int): The size of the target vocabulary.
+        hid_dim (int): The dimensionality of the input embeddings and the model's hidden states.
+        n_layers (int): The number of decoder layers.
+        n_heads (int): The number of attention heads in the multi-head attention layers.
+        pwff_dim (int): The dimensionality of the feed-forward neural network layers.
+        pad_idx (int):  the entries at padding_idx do not contribute to the gradient; therefore,
+        the embedding vector at padding_idx is not updated during training, i.e. it remains as a fixed “pad”
+        dropout (float, optional): The dropout probability to apply within the module. Default: 0.1.
+        max_len (int, optional): The maximum length of the input sequences. Default: 500
+
+    Inputs:
+        - tgt (torch.Tensor): The target sequence tensor of shape (batch_size, tgt_len).
+        - enc_src (torch.Tensor): The encoded source sequence tensor of shape (batch_size, src_len, hid_dim).
+        - src_mask (torch.Tensor): The mask tensor for the source sequence of shape (batch_size, src_len, src_len).
+        - tgt_mask (torch.Tensor): The mask tensor for the target sequence of shape (batch_size, tgt_len, tgt_len).
+
+    Returns:
+        - output (torch.Tensor): The output tensor of shape (batch_size, tgt_len, hid_dim).
+    """
+
+    def __init__(self, output_dim:int, hid_dim:int, n_layers:int, n_heads:int,
+                 pwff_dim:int, pad_idx:int, dropout:float=0.1, max_len:int=500):
         super().__init__()
         
         self.tok_embedding = nn.Embedding(output_dim, hid_dim, padding_idx=pad_idx)
@@ -13,32 +38,19 @@ class Decoder(nn.Module):
         
         self.layers = nn.ModuleList([DecoderLayer(hid_dim, n_heads, pwff_dim, dropout) for _ in range(n_layers)])
         
-        #self.fc_out = nn.Linear(hid_dim, output_dim)
-        
         self.dropout = nn.Dropout(dropout)
         
         self.scale = torch.sqrt(torch.FloatTensor([hid_dim]))
         
-    def forward(self, x, memory, src_mask, tgt_mask):
+    def forward(self, tgt:torch.Tensor, enc_src:torch.Tensor, src_mask:torch.Tensor, tgt_mask:torch.Tensor):
         
-        #x = [batch size, x len]
-        #memory = [batch size, src len, hid dim]
-        #tgt_mask = [batch size, 1, x len, x len]
-        #src_mask = [batch size, 1, 1, src len]
-        
-        x = self.tok_embedding(x) * self.scale  # (batch_size, target_seq_len, d_model)
-        x = self.pos_embedding(x)  # (batch_size, target_seq_len, d_model)
-                
-        #x = [batch size, x len, hid dim]
+        tgt = self.tok_embedding(tgt) * self.scale  # Shape: (batch_size, tgt_len, hid_dim)
+        tgt = self.pos_embedding(tgt)  # Shape: (batch_size, tgt_len, hid_dim)
         
         for layer in self.layers:
-            x, attention = layer(x, memory, src_mask, tgt_mask)
+            tgt, attention = layer(tgt, enc_src, src_mask, tgt_mask)
         
-        #x = [batch size, x len, hid dim]
-        #attention = [batch size, n heads, x len, src len]
-        
-        #output = self.fc_out(x)
-        
-        #output = [batch size, x len, output dim]
+        # tgt --> Shape: (batch_size, tgt_len, hid_dim)
+        # attention --> Shape: (batch_size, n heads, tgt_len, src_len)
             
-        return x, attention #output, attention
+        return tgt, attention
